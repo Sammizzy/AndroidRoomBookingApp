@@ -10,12 +10,15 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.roombookingapp.data.AppDatabase
+import com.example.roombookingapp.data.BookingDao
+import com.example.roombookingapp.data.MeetingRoom
 import com.example.roombookingapp.data.RoomDao
 import kotlinx.coroutines.launch
 
 class RoomListFragment : Fragment() {
 
     private lateinit var roomDao: RoomDao
+    private lateinit var bookingDao: BookingDao
     private lateinit var adapter: RoomAdapter
     private lateinit var rvRooms: RecyclerView
     private lateinit var tvEmptyMessage: TextView
@@ -31,7 +34,9 @@ class RoomListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        roomDao = AppDatabase.getDatabase(requireContext()).roomDao()
+        val db = AppDatabase.getDatabase(requireContext())
+        roomDao = db.roomDao()
+        bookingDao = db.bookingDao()
         
         rvRooms = view.findViewById(R.id.rvRooms)
         tvEmptyMessage = view.findViewById(R.id.tvEmptyMessage)
@@ -57,15 +62,37 @@ class RoomListFragment : Fragment() {
 
     private fun loadRooms() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val rooms = roomDao.getAllActiveRooms()
+            var rooms = roomDao.getAllActiveRooms()
+
+            // If still empty, try to populate manually as a fallback
+            if (rooms.isEmpty()) {
+                populateRoomsManually()
+                rooms = roomDao.getAllActiveRooms()
+            }
+
+            val bookings = bookingDao.getAllBookings()
+
             if (rooms.isEmpty()) {
                 tvEmptyMessage.visibility = View.VISIBLE
                 rvRooms.visibility = View.GONE
             } else {
                 tvEmptyMessage.visibility = View.GONE
                 rvRooms.visibility = View.VISIBLE
-                adapter.updateData(rooms)
+                adapter.updateData(rooms, bookings)
             }
+        }
+    }
+
+    private suspend fun populateRoomsManually() {
+        for (i in 1..5) {
+            roomDao.insertRoom(
+                MeetingRoom(
+                    roomName = "Meeting Room $i",
+                    capacity = 5 + i,
+                    roomType = if (i % 2 == 0) "Conference" else "Small",
+                    description = "Equipped with modern facilities for your meetings."
+                )
+            )
         }
     }
 }
