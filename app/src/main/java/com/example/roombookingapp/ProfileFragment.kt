@@ -67,7 +67,7 @@ class ProfileFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                // 1. Test User Management (Must Have)
+                // 1. Test User Management
                 results.append("1.User Management: ")
                 val testUser = User(email = "test@example.com", password = "password", name = "Test User")
                 db.userDao().registerUser(testUser)
@@ -78,7 +78,7 @@ class ProfileFragment : Fragment() {
                     results.append("FAILED\n")
                 }
 
-                // 2. Test Room Availability (Must Have)
+                // 2. Test Room Availability
                 results.append("2.Room Availability: ")
                 val rooms = db.roomDao().getAllActiveRooms()
                 if (rooms.isNotEmpty()) {
@@ -87,7 +87,7 @@ class ProfileFragment : Fragment() {
                     results.append("FAILED (No rooms in DB)\n")
                 }
 
-                // 3. Test Booking Creation (Must Have)
+                // 3. Test Booking Creation
                 results.append("3.Booking Creation: ")
                 if (rooms.isNotEmpty()) {
                     val booking = Booking(
@@ -111,7 +111,7 @@ class ProfileFragment : Fragment() {
                     results.append("SKIPPED (No rooms)\n")
                 }
 
-                // 4. Test Conflict Detection (Should Have)
+                // 4. Test Conflict Detection
                 results.append("4.Conflict Detection: ")
                 if (rooms.isNotEmpty()) {
                     val conflicts = db.bookingDao().getConflictingBookings(rooms[0].roomId, "01/01/2099", "10:30 AM", "11:30 AM")
@@ -124,7 +124,7 @@ class ProfileFragment : Fragment() {
                     results.append("SKIPPED\n")
                 }
 
-                // 5. Test Equipment Tracking (Could Have)
+                // 5. Test Equipment Tracking
                 results.append("5.Equipment Tracking: ")
                 val lastBooking = db.bookingDao().getAllBookings().lastOrNull()
                 if (lastBooking?.equipmentList?.contains("Projector") == true) {
