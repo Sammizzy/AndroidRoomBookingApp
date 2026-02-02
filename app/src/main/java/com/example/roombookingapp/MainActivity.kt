@@ -1,27 +1,37 @@
 package com.example.roombookingapp
 
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val session = UserSession(this)
+        if (!session.isLoggedIn()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.btnBook).setOnClickListener {
-            loadFragment(BookRoomFragment())
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNavigation)
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_rooms -> loadFragment(RoomListFragment())
+                R.id.nav_bookings -> loadFragment(ViewBookingsFragment())
+                R.id.nav_profile -> loadFragment(ProfileFragment())
+            }
+            true
         }
 
-        findViewById<Button>(R.id.btnView).setOnClickListener {
-            loadFragment(ViewBookingsFragment())
-        }
-
-        // Load default fragment
         if (savedInstanceState == null) {
-            loadFragment(BookRoomFragment())
+            loadFragment(RoomListFragment())
         }
     }
 

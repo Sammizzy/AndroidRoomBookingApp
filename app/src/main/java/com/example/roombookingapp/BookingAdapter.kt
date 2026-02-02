@@ -29,7 +29,7 @@ class BookingAdapter(
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
         val booking = bookings[position]
         holder.tvRoomName.text = booking.roomName
-        holder.tvDateTime.text = "${booking.date} at ${booking.time}"
+        holder.tvDateTime.text = "${booking.date} at ${booking.startTime} - ${booking.endTime}"
         holder.tvDetails.text = "People: ${booking.numberOfPeople} | Equipment: ${booking.equipmentList.ifBlank { "None" }}"
         
         holder.btnDelete.setOnClickListener {
