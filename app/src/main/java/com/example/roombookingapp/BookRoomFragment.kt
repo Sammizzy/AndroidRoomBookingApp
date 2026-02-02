@@ -1,12 +1,12 @@
 package com.example.roombookingapp
 
-import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CalendarView
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
@@ -51,6 +51,8 @@ class BookRoomFragment : Fragment() {
         session = UserSession(requireContext())
 
         val tvSelectedRoom = view.findViewById<TextView>(R.id.tvSelectedRoom)
+        val calendarView = view.findViewById<CalendarView>(R.id.calendarView)
+        val tvUnavailableSlots = view.findViewById<TextView>(R.id.tvUnavailableSlots)
         val etDate = view.findViewById<EditText>(R.id.etDate)
         val etStartTime = view.findViewById<EditText>(R.id.etStartTime)
         val etEndTime = view.findViewById<EditText>(R.id.etEndTime)
@@ -59,18 +61,28 @@ class BookRoomFragment : Fragment() {
         if (selectedRoomName.isNotEmpty()) {
             tvSelectedRoom.text = "Selected Room: $selectedRoomName"
         }
+
+        // Set default date to today
+        val today = Calendar.getInstance()
+        val initialDate = String.format(Locale.getDefault(), "%02d/%02d/%d", today.get(Calendar.DAY_OF_MONTH), today.get(Calendar.MONTH) + 1, today.get(Calendar.YEAR))
+        etDate.setText(initialDate)
+        updateUnavailableSlots(initialDate, tvUnavailableSlots)
+
+        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+            val selectedDate = String.format(Locale.getDefault(), "%02d/%02d/%d", dayOfMonth, month + 1, year)
+            etDate.setText(selectedDate)
+            updateUnavailableSlots(selectedDate, tvUnavailableSlots)
+        }
         
         val cbProjector = view.findViewById<CheckBox>(R.id.cbProjector)
         val cbWhiteboard = view.findViewById<CheckBox>(R.id.cbWhiteboard)
         val cbConferencePhone = view.findViewById<CheckBox>(R.id.cbConferencePhone)
         val btnSave = view.findViewById<Button>(R.id.btnConfirmBooking)
 
-        etDate.setOnClickListener { showDatePicker(etDate) }
         etStartTime.setOnClickListener { showTimePicker(etStartTime) }
         etEndTime.setOnClickListener { showTimePicker(etEndTime) }
 
         btnSave.setOnClickListener {
-            val roomName = selectedRoomName
             val date = etDate.text.toString()
             val startTime = etStartTime.text.toString()
             val endTime = etEndTime.text.toString()
@@ -81,7 +93,7 @@ class BookRoomFragment : Fragment() {
             if (cbWhiteboard.isChecked) equipment.add("Whiteboard")
             if (cbConferencePhone.isChecked) equipment.add("Conference Phone")
 
-            if (roomName.isBlank() || date.isBlank() || startTime.isBlank() || endTime.isBlank()) {
+            if (date.isBlank() || startTime.isBlank() || endTime.isBlank()) {
                 Toast.makeText(requireContext(), "Please fill in all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -89,14 +101,14 @@ class BookRoomFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch {
                 val conflicts = bookingDao.getConflictingBookings(selectedRoomId, date, startTime, endTime)
                 if (conflicts.isNotEmpty()) {
-                    Toast.makeText(requireContext(), "Double booking detected!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "This time slot is already booked!", Toast.LENGTH_SHORT).show()
                     return@launch
                 }
 
                 val booking = Booking(
                     userId = session.getUserId(),
                     roomId = selectedRoomId,
-                    roomName = roomName,
+                    roomName = selectedRoomName,
                     date = date,
                     startTime = startTime,
                     endTime = endTime,
@@ -111,12 +123,16 @@ class BookRoomFragment : Fragment() {
         }
     }
 
-    private fun showDatePicker(editText: EditText) {
-        val calendar = Calendar.getInstance()
-        val datePickerDialog = DatePickerDialog(requireContext(), { _, y, m, d ->
-            editText.setText(String.format(Locale.getDefault(), "%02d/%02d/%d", d, m + 1, y))
-        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
-        datePickerDialog.show()
+    private fun updateUnavailableSlots(date: String, textView: TextView) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val bookings = bookingDao.getAllBookings().filter { it.roomId == selectedRoomId && it.date == date && it.status == "CONFIRMED" }
+            if (bookings.isEmpty()) {
+                textView.text = "Unavailable Slots: None"
+            } else {
+                val slots = bookings.joinToString(", ") { "${it.startTime} - ${it.endTime}" }
+                textView.text = "Unavailable Slots: $slots"
+            }
+        }
     }
 
     private fun showTimePicker(editText: EditText) {
